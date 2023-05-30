@@ -1,20 +1,7 @@
-/* 
-export const frota: TCarro[] = [
-  {
-    marca: 'Chevrolet',
-    modelo: 'Onix',
-    ano: 2019
-  }, {
-
-    name: string,
-    email: string,
-    password: string,
-    createdAt: string
-*/
 
 import { TProducts, TUsers } from "./types";
 
-export const user: TUsers[] = [
+export const users: TUsers[] = [
     {
         id: 'u001',
         name: 'Alex',
@@ -31,7 +18,7 @@ export const user: TUsers[] = [
     },
 ]
 
-export const product: TProducts[] = [
+export const products: TProducts[] = [
     {
         id: 'prod001',
         name: 'Mouse gamer',
@@ -47,3 +34,45 @@ export const product: TProducts[] = [
         imageUrl: 'https://picsum.photos/seed/Monitor/400'
     },
 ]
+
+export function createUser(id: string, name: string, email: string, password: string){
+    const newUser = {
+        id,
+        name,
+        email,
+        password,
+        createdAt: new Date().toISOString()
+    }
+    users.push(newUser)
+    return 'Usuário cadastrado com sucesso'
+}
+
+export function getAllUsers(users: TUsers[]){
+    return users
+}
+
+export function createProduct(id: string, name: string, price: number, description: string, imageUrl: string){
+    const newProduct = {
+        id,
+        name,
+        price,
+        description,
+        imageUrl,
+    }
+    products.push(newProduct)
+    return "Produto criado com sucesso"
+}
+
+
+export function getAllProducts(products: TProducts[]){
+    return products
+}
+
+export function searchProductsByName( product: string){
+    return products.filter(prod => prod.name.toLowerCase().includes(product.toLowerCase()))
+}
+
+
+
+
+
