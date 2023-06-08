@@ -1,17 +1,53 @@
+import express, { Request, Response} from 'express'; 
+import cors from 'cors';
 import { users, products, createUser, getAllUsers, createProduct, getAllProducts, searchProductsByName } from "./database";
- 
 
-//console.log(createUser('007', 'Vitor', 'vitor@gmail.com', '134'))
+const app = express();
 
-//console.log(users);
-//console.log(product);
+app.use(express.json());
+app.use(cors());
 
-//console.log(getAllUsers(users));
+app.listen(3003, () => {
+    console.log("Servidor rodando na porta 3003");
+});
 
-console.log(createProduct('prod007', 'camiseta', 50, 'camiseta Goku', 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.latostadora.com%2Fweb%2Fcamiseta_goku_hombre%2F1122354&psig=AOvVaw1wfceviaAt7U4X6_2OF_dN&ust=1685496276026000&source=images&cd=vfe&ved=2ahUKEwihyNiH8Zv_AhXYlmoFHQNJDSwQjRx6BAgAEAw'));
+app.get('/ping', (req: Request, res: Response) => {
+    res.send('Pong!')
+});
 
-//console.log(getAllProducts(products));
+app.get('/users', (req: Request, res: Response)=>{
+    res.status(200).send(users)
+})
 
-console.log(searchProductsByName('Monitor'))
+app.get('/products', (req: Request, res: Response) => {
+    const q = req.query.q as string
+    let response
+    if (q) {
+      response = searchProductsByName(q)
+     
+    } else {
+      response = products;
+    }
+    res.status(200).send(response)
+  });
+  
+  app.post('/users', (req: Request, res: Response) => {
+    /* const id = req.body.id as string
+    const name = req.body.name as string
+    const email = req.body.email as string
+    const password = req.body.password as string */
+    const { id, name, email, password } = req.body
 
+    createUser(id, name, email,password)
+    res.status(201).send('Cadastro realizado com sucesso');
+ });
 
+app.post('/products', (req: Request, res: Response)=> {
+
+    const { id, name, price, description, imageUrl } = req.body;
+
+    createProduct(id, name, price, description, imageUrl)
+    res.status(201).send('Produto cadastrado com sucesso')
+}) 
+
+  
