@@ -118,3 +118,24 @@ FROM purchases
 INNER JOIN users
 ON purchases.buyer = users.id;
 
+CREATE TABLE purchases_products (
+    purchase_id TEXT NOT NULL,
+    product_id TEXT NOT NULL,
+    quantity INTEGER NOT NULL,
+    FOREIGN KEY (purchase_id) REFERENCES purchases(id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+INSERT INTO purchases_products
+VALUES
+    ('p001','prod004',5),
+    ('p002','prod005',1),
+    ('p003','prod007',2);
+
+SELECT * FROM purchases_products;
+
+SELECT * FROM purchases_products
+INNER JOIN purchases
+ON purchases_products.purchase_id = purchases.id
+INNER JOIN products
+ON purchases_products.product_id = products.id;
