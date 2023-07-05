@@ -1,6 +1,7 @@
 import express, { Request, Response} from 'express'; 
 import cors from 'cors';
 import { users, products, createUser, getAllUsers, createProduct, getAllProducts, searchProductsByName } from "./database";
+import { db } from './database/knex';
 
 const app = express();
 
@@ -11,58 +12,78 @@ app.listen(3003, () => {
     console.log("Servidor rodando na porta 3003");
 });
 
-app.get('/ping', (req: Request, res: Response) => {
-    res.send('Pong!')
+app.get('/ping', async (req: Request, res: Response) => { 
+    try {
+      res.status(200).send({ message:'Pong!' })
+    } catch (error) {
+      console.log(error)
+
+      if (req.statusCode === 200) {
+          res.status(500)
+      }
+
+      if (error instanceof Error) {
+          res.send(error.message)
+      } else {
+          res.send("Erro inesperado")
+      }
+    }
 });
 
-app.get('/users', (req: Request, res: Response)=>{
+// Endpoint que busca todos os usuários
+app.get('/users', async (req: Request, res: Response)=>{
   try {
-
-    if(!users){
-      res.status(404)
-      throw new Error ('Usuários não encontrados')  
-    }
-    res.status(200).send(users)
+    const result = await db.raw(`
+      SELECT * FROM users;
+    `)
+    res.status(200).send({users: result})
   } catch (error) {
-    if(error instanceof Error){ 
-      res.send(error.message)
-    }else{
-      res.status(500).send("Erro desconhecido")
-    }     
+    console.log(error)  
+    if (req.statusCode === 200) {
+      res.status(500)
+    }
+
+    if (error instanceof Error) {
+        res.send(error.message)
+    } else {
+        res.send("Erro inesperado")
+    } 
   }
 })
 
-app.get('/products', (req: Request, res: Response) => {
+// Endpoint que busca todos os produtos
+app.get('/products', async (req: Request, res: Response) => {
   try {
     const q = req.query.q as string
-    let response
 
     if (q) {
       if (q.length < 1){
         res.status(400)
         throw new Error("O nome deve ter ao menos 1 letra") 
       }
-      response = searchProductsByName(q)
-     
+
+      const result = await db.raw(`
+        SELECT * FROM products
+        WHERE name LIKE '%${q}%';    
+      `)
+      res.status(200).send({products: result});
     } else {
-      response = products;
-    }
-    res.status(200).send(response)
+      const result = await db.raw(`
+        SELECT * FROM products;    
+      `)
+      res.status(200).send({products: result})
+    }  
   } catch (error) {
     if(error instanceof Error){ 
-      res.send(error.message)
-  }else{
-      res.status(500).send("Erro desconhecido")
-  }    
-  }
-   
+        res.send(error.message)
+    }else{
+        res.status(500).send("Erro desconhecido")
+    }    
+  }   
 });
-  
-app.post('/users', (req: Request, res: Response) => {
-    /* const id = req.body.id as string
-    const name = req.body.name as string
-    const email = req.body.email as string
-    const password = req.body.password as string */
+
+//Endpoint para cadastrar novo usuário  
+app.post('/users', async (req: Request, res: Response) => {
 
     try {
       const { id, name, email, password } = req.body
@@ -72,30 +93,48 @@ app.post('/users', (req: Request, res: Response) => {
         throw new Error('Todos os campos devem ser preenchidos');
       }
       // Verificar se já existe uma conta com a mesma ID
-      const existingUserWithId = users.find((user) => user.id === id)
-      if (existingUserWithId) {
+      const existingUserWithId = await db.raw(`
+        SELECT id FROM users WHERE id = '${id}';
+      `);
+      if (existingUserWithId.length > 0) {
         res.status(409)
         throw new Error('Já existe uma conta com a mesma ID');
       }
       // Verificar se já existe uma conta com o mesmo e-mail
-      const existingUserWithEmail = users.find((user) => user.email === email)
-      if (existingUserWithEmail) {
+      
+      const existingUserWithEmail = await db.raw(`
+        SELECT email FROM users WHERE email = '${email}';
+      `);
+
+      if (existingUserWithEmail.length > 0) {
         res.status(409)
         throw new Error ('Já existe uma conta com o mesmo e-mail');
       }
-      createUser(id, name, email,password)
-      res.status(201).send('Cadastro realizado com sucesso');
+
+      await db.raw(`
+        INSERT INTO users (id, name, email, password) 
+        VALUES ("${id}", "${name}", "${email}", "${password}");
+      `)
+
+        res.status(200).send(`Cadastro realizado com sucesso`)
 
     } catch (error) {
-      if(error instanceof Error){ 
+      console.log(error)
+
+      if (req.statusCode === 200) {
+        res.status(500)
+      }
+
+      if (error instanceof Error) {
         res.send(error.message)
-      }else{
-        res.status(500).send("Erro desconhecido")
+      } else {
+        res.send("Erro inesperado")
       } 
     }  
 });
 
-app.post('/products', (req: Request, res: Response)=> {
+//Endpoint para cadastrar novo produto
+app.post('/products', async (req: Request, res: Response)=> {
   try {
     const { id, name, price, description, imageUrl } = req.body;
     if (!id || !name || !price || !description || !imageUrl) {
@@ -103,22 +142,115 @@ app.post('/products', (req: Request, res: Response)=> {
       throw new Error('Todos os campos devem ser preenchidos');
     }
     // Verificar se já existe um produto com a mesma ID
-    const existingProductWithId = products.find((product) => product.id === id)
-    if (existingProductWithId) {
+    const existingProductWithId = await db.raw(`
+        SELECT id FROM products WHERE id = '${id}';
+    `);
+    if (existingProductWithId.length > 0) {
       res.status(409)
-      throw new Error('Já existe uma conta com a mesma ID');
+      throw new Error('Já existe um produto com o mesmo ID');
     }
-    createProduct(id, name, price, description, imageUrl)
+
+    await db.raw(`
+      INSERT INTO products (id, name, price, description, imageUrl) 
+      VALUES ("${id}", "${name}", "${price}", "${description}", "${imageUrl}");
+    `)
     res.status(201).send('Produto cadastrado com sucesso')
   } catch (error) {
+    console.log(error)
+    
+    if (req.statusCode === 200) {
+      res.status(500)
+    }
+
+    if (error instanceof Error) {
+        res.send(error.message)
+    } else {
+        res.send("Erro inesperado")
+    } 
+  } 
+})
+
+//Endpoint que busca produto pelo id
+app.get('/products/:id', async (req: Request, res: Response) => {
+  try {
+    const id = req.params.id
+
+    const result = await db.raw(`
+      SELECT * FROM products
+      WHERE id = '${id}';        
+    `)
+      res.status(200).send({product: result});
+  } catch (error) {
     if(error instanceof Error){ 
-      res.send(error.message)
+        res.send(error.message)
     }else{
-      res.status(500).send("Erro desconhecido")
+        res.status(500).send("Erro desconhecido")
+    }    
+  }   
+});
+
+//Endpoint para buscar pedidos pelo id do user
+app.get('/users/:id/purchases', async (req: Request, res: Response) => {
+  try {
+    const id = req.params.id
+
+    const result = await db.raw(`
+      SELECT * FROM purchases
+      WHERE buyer = '${id}';        
+    `)
+      res.status(200).send({purchase: result});
+  } catch (error) {
+    if(error instanceof Error){ 
+        res.send(error.message)
+    }else{
+        res.status(500).send("Erro desconhecido")
+    }    
+  }   
+});
+
+//Endpoint para criar novos pedidos
+//id TEXT PRIMARY KEY UNIQUE NOT NULL,
+//buyer TEXT NOT NULL,
+//total_price REAL NOT NULL,
+//created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+//paid BOOLEAN
+app.post('/purchases', async (req: Request, res: Response)=> {
+  try {
+    const { id, buyer, total_price, paid } = req.body;
+    if (!id || !buyer || !total_price || !paid) {
+      res.status(400)
+      throw new Error('Todos os campos devem ser preenchidos');
+    }
+    // Verificar se já existe um produto com a mesma ID
+    const existingPurchaseWithId = await db.raw(`
+        SELECT id FROM purchases WHERE id = '${id}';
+    `);
+    if (existingPurchaseWithId.length > 0) {
+      res.status(409)
+      throw new Error('Já existe um pedido com o mesmo ID');
+    }
+
+    await db.raw(`
+      INSERT INTO purchases (id, buyer, total_price, paid) 
+      VALUES ("${id}", "${buyer}", "${total_price}", "${paid}");
+    `)
+    res.status(201).send('Pedido cadastrado com sucesso')
+  } catch (error) {
+    console.log(error)
+    
+    if (req.statusCode === 200) {
+      res.status(500)
+    }
+
+    if (error instanceof Error) {
+        res.send(error.message)
+    } else {
+        res.send("Erro inesperado")
     } 
   }
     
 }) 
+
 
 app.delete('/users/:id', (req: Request, res: Response)=>{
   try {
