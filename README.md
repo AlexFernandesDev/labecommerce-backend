@@ -7,7 +7,7 @@ API vinculada à bando de dados para cadastro, consulta, alteração e exclusão
 - [x] Consulta de usuários, produtos e pedidos
 - [x] Alteração de produtos
 - [x] Exclusão de pedidos
-- [ ] 
+   
 ## Estrutura do banco de dados
 ![image](https://github.com/AlexFernandesDev/labecommerce-backend/assets/61995505/1b256926-0db8-4287-a4bb-57835077bdde)
 
